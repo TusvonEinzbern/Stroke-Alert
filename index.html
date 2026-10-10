@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự án Nhập Môn của Người Bất An</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Space Grotesk', 'sans-serif'] },
+                    colors: {
+                        primary: 'var(--primary)',
+                        surface: 'var(--surface)',
+                        background: 'var(--background)',
+                        border: 'var(--border)',
+                        textMain: 'var(--text-main)',
+                        textMuted: 'var(--text-muted)',
+                        accent: 'var(--accent)',
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px var(--text-main)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            /* Light Mode (Beige/Coffee) */
+            --primary: #a88661;
+            --surface: #fbf9f6;
+            --background: #efe9e1;
+            --border: #d4c5b3;
+            --text-main: #3e2a14;
+            --text-muted: #735f48;
+            --accent: #10b981;
+            --grid-color: #d4c5b3;
+        }
+        
+        .dark {
+            /* Dark Mode (Espresso/Amber) */
+            --primary: #d97706; /* Amber-600 */
+            --surface: #1c1917; /* Stone-900 */
+            --background: #0c0a09; /* Stone-950 */
+            --border: #44403c; /* Stone-700 */
+            --text-main: #fef3c7; /* Amber-50 */
+            --text-muted: #d6d3d1; /* Stone-300 */
+            --accent: #f59e0b; /* Amber-500 */
+            --grid-color: #292524;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-main);
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .card-ui {
+            background-color: var(--surface);
+            border: 2px solid var(--text-main);
+            border-radius: 4px; 
+            box-shadow: 4px 4px 0px 0px var(--text-main);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-ui {
+            background-color: var(--surface);
+            border: 2px solid var(--text-main);
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0px 0px var(--text-main);
+            transition: all 0.1s ease;
+        }
+        .btn-ui:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px 0px var(--text-main);
+        }
+
+        .pulse-indicator {
+            animation: pulse-op 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-op {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            background-color: var(--background);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-out;
+        }
+        
+        /* Drawer sliding animation */
+        #settings-drawer {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Canvas for Safe Zones */
+        #canvas-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Disabled by default */
+            z-index: 20;
+        }
+        #canvas-overlay.drawing-mode {
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-6 font-sans">
+
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <h1 class="text-4xl md:text-5xl font-bold text-textMain tracking-widest uppercase mb-4 text-center border-4 border-textMain p-8 bg-surface shadow-hard">
+            Dự Án Nhập Môn<br/><span class="text-2xl mt-4 block text-textMuted">của Người Bất An</span>
+        </h1>
+        <div class="w-64 h-2 bg-border mt-8 relative overflow-hidden border border-textMain">
+            <div class="absolute top-0 left-0 h-full bg-textMain animate-pulse" style="width: 100%"></div>
+        </div>
+        <p class="mt-4 text-sm font-semibold tracking-widest uppercase text-textMuted">Khởi động hệ thống...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="card-ui px-6 py-4 mb-6 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-textMain text-surface flex items-center justify-center border-2 border-textMain shadow-[2px_2px_0px_0px_var(--primary)]">
+                <i class="fa-solid fa-eye text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-textMain uppercase">HealthGuard AI</h1>
+                <p class="text-xs text-primary font-semibold uppercase tracking-wider">Dự án Nhập Môn của Người Bất An</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="theme-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-moon"></i> Night Watch
+            </button>
+            <button id="settings-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-sliders"></i> Cài Đặt
+            </button>
+            <div class="flex items-center gap-2 px-4 py-2 bg-border border-2 border-textMain shadow-[2px_2px_0px_0px_var(--text-main)]">
+                <span id="system-dot" class="w-3 h-3 bg-accent border-2 border-textMain pulse-indicator"></span>
+                <span id="system-status-text" class="text-sm font-bold text-textMain uppercase tracking-wider">Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        
+        <!-- Left: Video Stream -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            <div class="card-ui p-2 flex flex-col relative overflow-hidden group bg-surface">
+                <div class="absolute top-4 left-4 z-30 flex gap-2">
+                    <span class="px-3 py-1 bg-surface border-2 border-textMain text-xs font-bold text-textMain uppercase tracking-wider flex items-center shadow-[2px_2px_0px_0px_var(--text-main)]">
+                        <i class="fa-solid fa-video mr-2 text-primary"></i> Live Feed
+                    </span>
+                    <span id="fps-badge" class="px-3 py-1 bg-surface border-2 border-textMain text-xs font-bold text-textMain shadow-[2px_2px_0px_0px_var(--text-main)]">60 FPS</span>
+                </div>
+                
+                <!-- Safe Zone drawing instruction overlay -->
+                <div id="drawing-instruction" class="hidden absolute top-4 right-4 z-30 px-3 py-2 bg-[#f59e0b] text-[#1c1917] border-2 border-[#1c1917] text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#1c1917] animate-pulse">
+                    Kéo chuột trên video để vẽ Vùng an toàn (Giường/Sofa)
+                </div>
+
+                <div class="w-full aspect-video bg-textMain border-2 border-textMain overflow-hidden flex items-center justify-center relative select-none">
+                    <img id="video-stream" class="w-full h-full object-cover" src="/api/video_feed" draggable="false">
+                    <canvas id="canvas-overlay"></canvas>
+                </div>
+            </div>
+
+            <div class="card-ui flex flex-col flex-grow">
+                <div class="px-6 py-4 border-b-2 border-textMain flex justify-between items-center bg-border">
+                    <h2 class="text-sm font-bold text-textMain uppercase tracking-wider"><i class="fa-solid fa-list-ul mr-2 text-primary"></i>Nhật ký hoạt động</h2>
+                    <span class="text-xs font-bold text-surface bg-textMain px-3 py-1 border border-textMain" id="alerts-count">0 cảnh báo</span>
+                </div>
+                <div class="overflow-x-auto p-0">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-textMain bg-surface text-xs uppercase tracking-widest border-b-2 border-textMain">
+                                <th class="py-4 px-5 font-bold border-r-2 border-textMain">Thời gian</th>
+                                <th class="py-4 px-5 font-bold border-r-2 border-textMain">Sự kiện</th>
+                                <th class="py-4 px-5 font-bold border-r-2 border-textMain">Mức độ</th>
+                                <th class="py-4 px-5 font-bold border-r-2 border-textMain">Độ tin cậy</th>
+                                <th class="py-4 px-5 font-bold w-1/3">Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-body" class="text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Telemetry -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <div class="card-ui p-8 flex flex-col items-center justify-center text-center relative overflow-hidden bg-background">
+                <h3 class="text-textMain text-xs uppercase tracking-widest font-bold mb-6 border-b-2 border-textMain pb-2 w-full">Mức độ rủi ro</h3>
+                <div id="risk-badge" class="px-8 py-4 text-3xl font-black bg-accent text-surface border-4 border-textMain shadow-hard w-full uppercase tracking-widest transition-colors duration-300">
+                    SAFE
+                </div>
+                <p id="risk-description" class="text-sm text-textMuted mt-6 font-bold uppercase tracking-wider">Trạng thái bình thường</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card-ui p-5 flex flex-col gap-3 bg-surface">
+                    <div class="flex items-center text-primary border-b-2 border-border pb-2">
+                        <i class="fa-solid fa-satellite-dish text-sm mr-2"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Tín hiệu</span>
+                    </div>
+                    <span id="camera-conn" class="text-xl font-black text-textMain uppercase">Active</span>
+                </div>
+                <div class="card-ui p-5 flex flex-col gap-3 bg-surface">
+                    <div class="flex items-center text-primary border-b-2 border-border pb-2">
+                        <i class="fa-solid fa-street-view text-sm mr-2"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Mục tiêu</span>
+                    </div>
+                    <span id="person-det" class="text-xl font-black text-textMain uppercase">Trống</span>
+                </div>
+            </div>
+
+            <div class="card-ui p-6 flex justify-between items-center bg-textMain text-surface">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-surface text-textMain flex items-center justify-center mr-4 border-2 border-primary">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-border">Thời gian chạy</span>
+                </div>
+                <span id="uptime-val" class="font-mono text-2xl font-bold tracking-tighter">00:00:00</span>
+            </div>
+
+            <!-- Ntfy Setup Box -->
+            <div class="card-ui p-6 bg-border mt-auto">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-textMain text-surface flex items-center justify-center border-2 border-textMain flex-shrink-0">
+                        <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="text-sm font-black text-textMain uppercase tracking-widest">Báo động từ xa</h4>
+                        <p class="text-[10px] text-textMain mt-1 font-bold uppercase tracking-wider leading-relaxed">
+                            Quét mã QR để nhận thông báo tức thì (Ntfy.sh)
+                        </p>
+                    </div>
+                    <div class="w-16 h-16 border-2 border-textMain shadow-[2px_2px_0px_0px_var(--text-main)] bg-white p-1 flex-shrink-0">
+                        <img id="ntfy-qr" src="" alt="QR Code" class="w-full h-full object-contain">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Settings Drawer -->
+    <div id="settings-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden backdrop-blur-sm transition-opacity"></div>
+    <div id="settings-drawer" class="fixed top-0 right-0 w-full max-w-md h-full bg-surface border-l-4 border-textMain shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.2)] z-[101] transform translate-x-full flex flex-col">
+        <div class="p-6 border-b-4 border-textMain flex justify-between items-center bg-background">
+            <h2 class="text-xl font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-sliders mr-3"></i>Cài đặt</h2>
+            <button id="close-settings" class="w-10 h-10 btn-ui flex justify-center items-center text-textMain hover:bg-textMain hover:text-surface transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        
+        <div class="p-6 flex flex-col gap-8 overflow-y-auto flex-grow">
+            
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Thời gian báo động đỏ (Bất động)</label>
+                <div class="flex items-center gap-4 mt-2">
+                    <input type="range" id="set-immobility" min="3" max="180" step="1" class="w-full h-2 bg-border appearance-none border-2 border-textMain outline-none">
+                    <span id="val-immobility" class="text-lg font-black text-textMain w-16 text-right">10s</span>
+                </div>
+                <p class="text-[10px] text-textMuted font-bold uppercase tracking-wider mt-1">Giới hạn thời gian nằm bất động trước khi còi báo động được kích hoạt.</p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Âm thanh còi báo động</label>
+                <button id="toggle-sound" class="btn-ui p-3 w-full text-left flex justify-between items-center mt-1">
+                    <span>Phát còi báo động tại chỗ</span>
+                    <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+                </button>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Nguồn phát Video (Camera)</label>
+                <input type="text" id="set-camera-src" class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary mt-1" placeholder="Ví dụ: 0, 1 hoặc http://192.168...">
+                <p class="text-[10px] text-textMuted font-bold uppercase tracking-wider">Nhập 0 hoặc 1 cho Webcam, hoặc link mạng (RTSP/HTTP) cho Camera IP.</p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Kênh báo động từ xa (Ntfy)</label>
+                <input type="text" id="set-ntfy" class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary mt-1">
+                <p class="text-[10px] text-textMuted font-bold uppercase tracking-wider">Thay đổi mã kênh nếu bạn muốn bảo mật riêng tư báo động của mình.</p>
+            </div>
+
+            <div class="border-t-4 border-border pt-6 flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest mb-2"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Tính năng thông minh</label>
+                <button id="btn-draw-zone" class="btn-ui p-3 w-full bg-[#f59e0b] text-[#1c1917] border-[#1c1917] hover:bg-[#d97706] mb-2">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Trực tiếp vẽ Vùng an toàn
+                </button>
+                <button id="btn-clear-zone" class="btn-ui p-3 w-full text-red-600 border-red-600 hover:bg-red-50">
+                    <i class="fa-solid fa-trash mr-2"></i> Xóa tất cả Vùng an toàn
+                </button>
+                <p class="text-[10px] text-textMuted font-bold uppercase tracking-wider mt-2">Dùng chuột vẽ các khung hình chữ nhật quanh vị trí Giường ngủ, Sofa. AI sẽ bỏ qua các khu vực này để tránh báo động giả lúc bạn đang ngủ.</p>
+            </div>
+
+        </div>
+
+        <div class="p-6 border-t-4 border-textMain bg-background">
+            <button id="btn-save-settings" class="btn-ui w-full py-4 bg-textMain text-surface hover:bg-primary font-black tracking-widest text-lg">LƯU CÀI ĐẶT</button>
+        </div>
+    </div>
+
+    <script>
+        // Splash Screen
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if(splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 800);
+            }
+        }, 1500);
+
+        // Dark Mode Toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        const htmlNode = document.documentElement;
+        themeBtn.addEventListener('click', () => {
+            htmlNode.classList.toggle('dark');
+            const isDark = htmlNode.classList.contains('dark');
+            themeBtn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i> Day Mode' : '<i class="fa-solid fa-moon"></i> Night Watch';
+        });
+
+        // Settings Logic
+        const settingsDrawer = document.getElementById('settings-drawer');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        let soundEnabled = true;
+
+        const openSettings = () => {
+            settingsDrawer.style.transform = 'translateX(0)';
+            settingsOverlay.classList.remove('hidden');
+        };
+        const closeSettings = () => {
+            settingsDrawer.style.transform = 'translateX(100%)';
+            settingsOverlay.classList.add('hidden');
+        };
+
+        document.getElementById('settings-toggle').onclick = openSettings;
+        document.getElementById('close-settings').onclick = closeSettings;
+        settingsOverlay.onclick = closeSettings;
+
+        // Settings Inputs
+        const rangeImm = document.getElementById('set-immobility');
+        const valImm = document.getElementById('val-immobility');
+        rangeImm.oninput = (e) => { valImm.innerText = e.target.value + 's'; };
+
+        const soundToggle = document.getElementById('toggle-sound');
+        soundToggle.onclick = () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-icon').className = soundEnabled ? 'fa-solid fa-volume-high text-green-500' : 'fa-solid fa-volume-xmark text-red-500';
+        };
+
+        // Fetch Initial Settings
+        fetch('/api/settings').then(r=>r.json()).then(data => {
+            rangeImm.value = data.immobility_timeout;
+            valImm.innerText = data.immobility_timeout + 's';
+            soundEnabled = data.sound_enabled;
+            document.getElementById('sound-icon').className = soundEnabled ? 'fa-solid fa-volume-high text-green-500' : 'fa-solid fa-volume-xmark text-red-500';
+            document.getElementById('set-ntfy').value = data.ntfy_topic;
+            document.getElementById('set-camera-src').value = data.camera_source !== undefined ? data.camera_source : '';
+            document.getElementById('ntfy-qr').src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://ntfy.sh/" + data.ntfy_topic;
+            if(data.safe_zones) {
+                safeZones = data.safe_zones;
+                setTimeout(drawAllZones, 1000); // Wait for video load
+            }
+        }).catch(err => console.error(err));
+
+        // Save Settings
+        document.getElementById('btn-save-settings').onclick = () => {
+            const payload = {
+                immobility_timeout: parseInt(rangeImm.value),
+                sound_enabled: soundEnabled,
+                ntfy_topic: document.getElementById('set-ntfy').value,
+                camera_source: document.getElementById('set-camera-src').value,
+                safe_zones: safeZones
+            };
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            }).then(() => {
+                document.getElementById('ntfy-qr').src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://ntfy.sh/" + payload.ntfy_topic;
+                closeSettings();
+                // Tải lại trang sau 1 giây để stream video load lại nguồn mới nếu có thay đổi
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        };
+
+        // Canvas Drawing Logic for Safe Zones
+        const canvas = document.getElementById('canvas-overlay');
+        const ctx = canvas.getContext('2d');
+        const videoEl = document.getElementById('video-stream');
+        let drawingMode = false;
+        let isDrawing = false;
+        let startX = 0, startY = 0;
+        let safeZones = []; // array of {x1, y1, x2, y2} normalized
+
+        function resizeCanvas() {
+            canvas.width = videoEl.clientWidth;
+            canvas.height = videoEl.clientHeight;
+            drawAllZones();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        videoEl.onload = resizeCanvas;
+        setInterval(resizeCanvas, 2000); // Safety fallback to keep canvas scaled
+
+        document.getElementById('btn-draw-zone').onclick = () => {
+            closeSettings();
+            drawingMode = true;
+            canvas.classList.add('drawing-mode');
+            document.getElementById('drawing-instruction').classList.remove('hidden');
+        };
+        
+        document.getElementById('btn-clear-zone').onclick = () => {
+            safeZones = [];
+            drawAllZones();
+        };
+
+        canvas.onmousedown = (e) => {
+            if(!drawingMode) return;
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+        };
+
+        canvas.onmousemove = (e) => {
+            if(!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            drawAllZones(); // redraw existing
+            
+            // Draw current dragged rect
+            ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
+            ctx.strokeStyle = "#10b981";
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 6]);
+            ctx.fillRect(startX, startY, mouseX - startX, mouseY - startY);
+            ctx.strokeRect(startX, startY, mouseX - startX, mouseY - startY);
+            ctx.setLineDash([]);
+        };
+
+        canvas.onmouseup = (e) => {
+            if(!isDrawing) return;
+            isDrawing = false;
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // Normalize coords (0.0 to 1.0) relative to canvas size
+            const w = canvas.width; const h = canvas.height;
+            const x1 = Math.min(startX, endX) / w;
+            const x2 = Math.max(startX, endX) / w;
+            const y1 = Math.min(startY, endY) / h;
+            const y2 = Math.max(startY, endY) / h;
+            
+            // Ignore tiny accidental clicks (must be at least 5% of screen)
+            if((x2 - x1) > 0.05 && (y2 - y1) > 0.05) {
+                safeZones.push({x1, y1, x2, y2});
+            }
+            
+            drawingMode = false;
+            canvas.classList.remove('drawing-mode');
+            document.getElementById('drawing-instruction').classList.add('hidden');
+            drawAllZones();
+            
+            // Auto save immediately when zone drawn
+            document.getElementById('btn-save-settings').click(); 
+        };
+
+        function drawAllZones() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width; const h = canvas.height;
+            
+            safeZones.forEach(z => {
+                const zX = z.x1 * w;
+                const zY = z.y1 * h;
+                const zW = (z.x2 - z.x1) * w;
+                const zH = (z.y2 - z.y1) * h;
+                
+                ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
+                ctx.strokeStyle = "#10b981";
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 3;
+                
+                ctx.fillRect(zX, zY, zW, zH);
+                ctx.strokeRect(zX, zY, zW, zH);
+                ctx.setLineDash([]);
+                
+                // Add label
+                ctx.fillStyle = "#10b981";
+                ctx.font = "bold 14px sans-serif";
+                ctx.fillText("SAFE ZONE", zX + 8, zY + 20);
+            });
+        }
+
+        // Dashboard Status Update Logic
+        const formatUptime = (seconds) => {
+            if (seconds < 60) return `00:00:${Math.floor(seconds).toString().padStart(2, '0')}`;
+            const m = Math.floor(seconds / 60); const s = Math.floor(seconds % 60); const h = Math.floor(m / 60);
+            return `${h.toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        const riskConfig = {
+            'normal': { class: 'bg-accent text-surface', text: 'SAFE', desc: 'Bình thường' },
+            'low': { class: 'bg-[#f59e0b] text-[#1c1917]', text: 'NOTICE', desc: 'Có dị thường nhẹ' },
+            'medium': { class: 'bg-[#f97316] text-[#fbf9f6]', text: 'WARNING', desc: 'Cần chú ý' },
+            'high': { class: 'bg-[#ef4444] text-[#fbf9f6]', text: 'DANGER', desc: 'Nguy cơ cao!' },
+            'critical': { class: 'bg-[#991b1b] text-[#fbf9f6] animate-pulse', text: 'CRITICAL', desc: 'TÌNH TRẠNG KHẨN CẤP!' }
+        };
+
+        function updateDashboard() {
+            fetch('/api/status').then(r=>r.json()).then(data => {
+                if(data.error) return;
+                document.getElementById('camera-conn').innerText = data.camera_connected ? "ON" : "OFF";
+                document.getElementById('person-det').innerText = data.person_detected ? "Có người" : "Trống";
+                document.getElementById('fps-badge').innerText = `${data.fps.toFixed(0)} FPS`;
+                document.getElementById('uptime-val').innerText = formatUptime(data.uptime_seconds);
+                document.getElementById('alerts-count').innerText = `${data.total_alerts_sent} CẢNH BÁO`;
+                
+                const rc = riskConfig[data.current_risk_level || 'normal'];
+                document.getElementById('risk-badge').className = `px-8 py-4 text-3xl font-black border-4 border-textMain shadow-hard w-full uppercase tracking-widest ${rc.class} transition-colors duration-300`;
+                document.getElementById('risk-badge').innerText = rc.text;
+                document.getElementById('risk-description').innerText = rc.desc;
+                
+                const dot = document.getElementById('system-dot');
+                if(data.is_running) {
+                    dot.className = 'w-3 h-3 bg-accent border-2 border-textMain pulse-indicator';
+                    document.getElementById('system-status-text').innerText = 'ONLINE';
+                } else {
+                    dot.className = 'w-3 h-3 bg-red-500 border-2 border-textMain';
+                    document.getElementById('system-status-text').innerText = 'OFFLINE';
+                }
+            }).catch(()=>{});
+
+            fetch('/api/events').then(r=>r.json()).then(data => {
+                if(data.error) return;
+                const tbody = document.getElementById('events-body');
+                const history = data.history || [];
+                if(history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="py-16 text-center text-primary font-bold uppercase tracking-widest border-b-2 border-textMain">Chưa có sự kiện nào</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                history.sort((a,b)=>b.timestamp - a.timestamp);
+                history.forEach(ev => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b-2 border-border hover:bg-background transition-colors";
+                    const date = new Date(ev.timestamp * 1000);
+                    const timeStr = date.toLocaleTimeString('en-US',{hour12:false});
+                    const confHtml = `<div class="flex items-center gap-2">
+                        <div class="w-16 h-2 bg-border border border-textMain overflow-hidden">
+                            <div class="h-full bg-textMain" style="width: ${ev.confidence*100}%"></div>
+                        </div><span class="text-xs font-black text-textMain">${(ev.confidence*100).toFixed(0)}%</span>
+                    </div>`;
+                    tr.innerHTML = `<td class="py-4 px-5 text-textMain font-mono font-bold text-xs border-r-2 border-border">${timeStr}</td>
+                        <td class="py-4 px-5 font-black text-textMain uppercase tracking-wider border-r-2 border-border">${ev.event_type}</td>
+                        <td class="py-4 px-5 border-r-2 border-border"><span class="px-2 py-1 border-2 text-[10px] font-black uppercase tracking-widest border-textMain bg-surface text-textMain">${ev.severity}</span></td>
+                        <td class="py-4 px-5 border-r-2 border-border">${confHtml}</td>
+                        <td class="py-4 px-5 text-textMuted text-xs font-bold uppercase tracking-wider truncate max-w-[200px]" title="${ev.description}">${ev.description}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }).catch(()=>{});
+        }
+        setInterval(updateDashboard, 1500);
+        updateDashboard();
+    </script>
+</body>
+</html>

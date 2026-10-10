@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự án Nhập Môn của Người Bất An</title>
+    <link rel="icon" type="image/x-icon" href="/static/icon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Space Grotesk', 'sans-serif'] },
+                    colors: {
+                        primary: 'var(--primary)',
+                        surface: 'var(--surface)',
+                        background: 'var(--background)',
+                        border: 'var(--border)',
+                        textMain: 'var(--text-main)',
+                        textMuted: 'var(--text-muted)',
+                        accent: 'var(--accent)',
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px var(--text-main)',
+                        'hard-sm': '2px 2px 0px 0px var(--text-main)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            /* Light Mode (Beige/Coffee) */
+            --primary: #a88661;
+            --surface: #fbf9f6;
+            --background: #efe9e1;
+            --border: #d4c5b3;
+            --text-main: #3e2a14;
+            --text-muted: #735f48;
+            --accent: #10b981;
+            --grid-color: #d4c5b3;
+        }
+        
+        .dark {
+            /* Dark Mode (Espresso/Amber) */
+            --primary: #d97706; 
+            --surface: #1c1917; 
+            --background: #0c0a09; 
+            --border: #44403c; 
+            --text-main: #fef3c7; 
+            --text-muted: #d6d3d1; 
+            --accent: #f59e0b; 
+            --grid-color: #292524;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-main);
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .card-ui {
+            background-color: var(--surface);
+            border: 2px solid var(--text-main);
+            box-shadow: var(--tw-shadow-color, var(--text-main)) 4px 4px 0px 0px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-ui {
+            background-color: var(--surface);
+            border: 2px solid var(--text-main);
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: var(--tw-shadow-color, var(--text-main)) 2px 2px 0px 0px;
+            transition: all 0.1s ease;
+        }
+        .btn-ui:active {
+            transform: translate(2px, 2px);
+            box-shadow: var(--tw-shadow-color, var(--text-main)) 0px 0px 0px 0px !important;
+        }
+
+        .pulse-indicator { animation: pulse-op 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse-op { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed; inset: 0; background-color: var(--background);
+            z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.8s ease-out;
+        }
+
+        /* Fullscreen Siren Alert */
+        #siren-overlay {
+            position: fixed; inset: 0; pointer-events: none; z-index: 9998;
+            box-shadow: inset 0 0 100px rgba(220, 38, 38, 0.8);
+            border: 16px solid rgba(220, 38, 38, 0.9);
+            background-color: rgba(220, 38, 38, 0.1);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        #siren-overlay.active {
+            opacity: 1; animation: flash-siren 1s infinite alternate;
+        }
+        @keyframes flash-siren { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* Canvas for Safe Zones */
+        #canvas-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 20;
+        }
+        #canvas-overlay.drawing-mode { pointer-events: auto; cursor: crosshair; }
+        
+        /* Timeline line */
+        .timeline-line::before {
+            content: ''; position: absolute; top: 0; bottom: 0;
+            left: 23px; width: 4px; background-color: var(--text-main);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-6 font-sans">
+
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <img src="/static/icon.png?v=999" alt="Bocchi in Trash Can" class="w-48 h-48 object-contain mb-8 animate-bounce drop-shadow-md">
+        <h1 class="text-4xl md:text-5xl font-bold text-textMain tracking-widest uppercase mb-4 text-center border-4 border-textMain p-8 bg-surface shadow-hard">
+            Dự Án Nhập Môn<br/><span class="text-2xl mt-4 block text-textMuted">của Người Bất An</span>
+        </h1>
+        <div class="w-64 h-2 bg-border mt-8 relative overflow-hidden border border-textMain">
+            <div class="absolute top-0 left-0 h-full bg-textMain animate-pulse" style="width: 100%"></div>
+        </div>
+        <p class="mt-4 text-sm font-semibold tracking-widest uppercase text-textMuted">Khởi động hệ thống phòng thủ...</p>
+    </div>
+
+    <!-- Visual Siren Overlay -->
+    <div id="siren-overlay">
+        <h1 class="text-6xl md:text-8xl font-black text-red-600 uppercase tracking-widest opacity-30 animate-ping absolute">CRITICAL</h1>
+    </div>
+
+    <!-- Header -->
+    <header class="card-ui px-6 py-4 mb-6 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 flex items-center justify-center">
+                <img src="/static/icon.png?v=999" class="w-full h-full object-contain drop-shadow-md">
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-textMain uppercase">HealthGuard AI</h1>
+                <p class="text-xs text-primary font-semibold uppercase tracking-wider">Chế độ giám sát chủ động</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="theme-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-moon"></i> Night Watch
+            </button>
+                                    <button id="blackbox-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-video"></i> Hộp Đen
+            </button>
+            <button id="stats-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-chart-simple"></i> Báo Cáo
+            </button>
+            <button id="settings-toggle" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-background">
+                <i class="fa-solid fa-sliders"></i> Cài Đặt
+            </button>
+            <div class="flex items-center gap-2 px-4 py-2 bg-border border-2 border-textMain shadow-[2px_2px_0px_0px_var(--text-main)]">
+                <span id="system-dot" class="w-3 h-3 bg-accent border-2 border-textMain pulse-indicator"></span>
+                <span id="system-status-text" class="text-sm font-bold text-textMain uppercase tracking-wider">Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
+        
+        <!-- Left: Video Stream -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            <div class="card-ui p-2 flex flex-col relative overflow-hidden group bg-surface">
+                <div class="absolute top-4 left-4 z-30 flex gap-2">
+                    <span class="px-3 py-1 bg-surface border-2 border-textMain text-xs font-bold text-textMain uppercase tracking-wider flex items-center shadow-[2px_2px_0px_0px_var(--text-main)]">
+                        <i class="fa-solid fa-video mr-2 text-primary"></i> Live Feed
+                    </span>
+                    <span id="fps-badge" class="px-3 py-1 bg-surface border-2 border-textMain text-xs font-bold text-textMain shadow-[2px_2px_0px_0px_var(--text-main)]">-- FPS</span>
+                </div>
+                
+                <div class="absolute top-4 right-4 z-30 flex gap-2">
+                    <button id="btn-pip" class="btn-ui px-3 py-1 text-xs text-textMain bg-surface" title="Mở Camera Nổi (Picture-in-Picture)">
+                        <i class="fa-solid fa-clone"></i> Tách Cửa Sổ
+                    </button>
+                </div>
+
+                <div id="drawing-instruction" class="hidden absolute top-14 right-4 z-30 px-3 py-2 bg-[#f59e0b] text-[#1c1917] border-2 border-[#1c1917] text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#1c1917] animate-pulse">
+                    Kéo chuột trên video để vẽ Vùng an toàn
+                </div>
+
+                <div class="w-full aspect-video bg-textMain border-2 border-textMain overflow-hidden flex items-center justify-center relative select-none">
+                    <img id="video-stream" class="w-full h-full object-cover" src="/api/video_feed" draggable="false" crossorigin="anonymous">
+                    <canvas id="canvas-overlay"></canvas>
+                </div>
+            </div>
+
+            <!-- New Timeline Event Log -->
+            <div class="card-ui flex flex-col flex-grow bg-surface">
+                <div class="px-6 py-4 border-b-2 border-textMain flex justify-between items-center bg-border">
+                    <h2 class="text-sm font-bold text-textMain uppercase tracking-wider"><i class="fa-solid fa-timeline mr-2 text-primary"></i>Dòng thời gian sự kiện</h2>
+                    <span class="text-xs font-bold text-surface bg-textMain px-3 py-1 border border-textMain shadow-hard-sm" id="alerts-count">0 cảnh báo</span>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[400px] relative timeline-line" id="events-timeline">
+                    <!-- Timeline items injected here -->
+                    <div class="text-center text-textMuted font-bold uppercase text-xs mt-4 tracking-widest bg-background border-2 border-textMain p-4 inline-block relative z-10 left-1/2 transform -translate-x-1/2">Hệ thống đang giám sát...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Telemetry -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <div class="card-ui p-8 flex flex-col items-center justify-center text-center relative overflow-hidden bg-background">
+                <h3 class="text-textMain text-xs uppercase tracking-widest font-bold mb-6 border-b-2 border-textMain pb-2 w-full">Mức độ rủi ro</h3>
+                <div id="risk-badge" class="px-8 py-4 text-3xl font-black bg-accent text-surface border-4 border-textMain shadow-hard w-full uppercase tracking-widest transition-colors duration-300">
+                    SAFE
+                </div>
+                <p id="risk-description" class="text-sm text-textMuted mt-6 font-bold uppercase tracking-wider">Trạng thái bình thường</p>
+                
+                <!-- Action button (hidden unless critical) -->
+                <button id="btn-resolve" class="hidden mt-6 w-full btn-ui py-3 bg-textMain text-surface hover:bg-primary font-black tracking-widest text-sm shadow-[4px_4px_0px_0px_#ef4444]">
+                    <i class="fa-solid fa-check-double mr-2"></i> ĐÃ XỬ LÝ
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card-ui p-5 flex flex-col gap-3 bg-surface">
+                    <div class="flex items-center text-primary border-b-2 border-border pb-2">
+                        <i class="fa-solid fa-satellite-dish text-sm mr-2"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Tín hiệu</span>
+                    </div>
+                    <span id="camera-conn" class="text-xl font-black text-textMain uppercase">Active</span>
+                </div>
+                <div class="card-ui p-5 flex flex-col gap-3 bg-surface">
+                    <div class="flex items-center text-primary border-b-2 border-border pb-2">
+                        <i class="fa-solid fa-street-view text-sm mr-2"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Mục tiêu</span>
+                    </div>
+                    <span id="person-det" class="text-xl font-black text-textMain uppercase">Trống</span>
+                </div>
+            </div>
+
+            <div class="card-ui p-6 flex justify-between items-center bg-textMain text-surface">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-surface text-textMain flex items-center justify-center mr-4 border-2 border-primary shadow-hard-sm">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-border">Thời gian chạy</span>
+                </div>
+                <span id="uptime-val" class="font-mono text-2xl font-bold tracking-tighter">00:00:00</span>
+            </div>
+
+
+            <div class="border-t-4 border-border pt-6 flex flex-col gap-4">
+                <h3 class="text-sm font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-address-card mr-2"></i> Hồ Sơ Bệnh Nhân</h3>
+                <input type="text" id="set-patient-name" placeholder="Họ và tên..." class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+                <div class="flex gap-4">
+                    <input type="text" id="set-patient-age" placeholder="Tuổi..." class="w-1/3 p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+                    <input type="text" id="set-emergency-phone" placeholder="SĐT Khẩn cấp..." class="w-2/3 p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+                </div>
+            </div>
+
+            <div class="border-t-4 border-border pt-6 flex flex-col gap-4">
+                <h3 class="text-sm font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-envelope mr-2"></i> Cảnh Báo Qua Email</h3>
+                <input type="email" id="set-receiver-email" placeholder="Nhập Email người nhận..." class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+                <div class="card-ui p-4 bg-border flex flex-col gap-2 mt-2">
+                    <p class="text-[10px] text-textMain font-bold uppercase tracking-wider mb-2">Cấu hình gửi (SMTP Gmail)</p>
+                    <input type="email" id="set-smtp-user" placeholder="Email người gửi (vd: abc@gmail.com)" class="w-full p-2 bg-background border-2 border-textMain font-mono text-xs text-textMain outline-none">
+                    <input type="password" id="set-smtp-pass" placeholder="Mật khẩu ứng dụng (App Password)" class="w-full p-2 bg-background border-2 border-textMain font-mono text-xs text-textMain outline-none">
+                </div>
+            </div>
+
+            <!-- Ntfy Setup Box -->
+            <div class="card-ui p-6 bg-border mt-auto">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-textMain text-surface flex items-center justify-center border-2 border-textMain flex-shrink-0 shadow-hard-sm">
+                        <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="text-sm font-black text-textMain uppercase tracking-widest">Báo động từ xa</h4>
+                        <p class="text-[10px] text-textMain mt-1 font-bold uppercase tracking-wider leading-relaxed">
+                            Quét mã QR để nhận thông báo khẩn cấp (Ntfy.sh)
+                        </p>
+                    </div>
+                    <div class="w-16 h-16 border-2 border-textMain shadow-[2px_2px_0px_0px_var(--text-main)] bg-white p-1 flex-shrink-0">
+                        <img id="ntfy-qr" src="" alt="QR Code" class="w-full h-full object-contain">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    
+    
+    <!-- Blackbox Modal -->
+    <div id="blackbox-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden backdrop-blur-sm transition-opacity"></div>
+    <div id="blackbox-modal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-4xl bg-surface border-4 border-textMain shadow-hard z-[101] hidden flex-col max-h-[90vh]">
+        <div class="p-4 border-b-4 border-textMain flex justify-between items-center bg-background">
+            <h2 class="text-xl font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-tape mr-3"></i>Hộp Đen Tiền Sự Cố</h2>
+            <button id="close-blackbox" class="w-10 h-10 btn-ui flex justify-center items-center text-textMain hover:bg-textMain hover:text-surface"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto bg-surface flex-grow flex flex-col gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="records-grid">
+                <!-- Records injected here -->
+                <p class="text-textMuted font-bold">Chưa có bản ghi nào.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="stats-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden backdrop-blur-sm transition-opacity"></div>
+    <div id="stats-modal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-4xl bg-surface border-4 border-textMain shadow-hard z-[101] hidden flex-col max-h-[90vh]">
+        <div class="p-4 border-b-4 border-textMain flex justify-between items-center bg-background">
+            <h2 class="text-xl font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-chart-line mr-3"></i>Hồ Sơ Y Tế & Thống Kê</h2>
+            <div class="flex items-center gap-4">
+                <a href="/api/export_csv" class="btn-ui px-4 py-2 text-sm text-textMain hover:bg-textMain hover:text-surface bg-primary font-bold">
+                    <i class="fa-solid fa-file-csv mr-2"></i> Xuất Excel (CSV)
+                </a>
+                <button id="close-stats" class="w-10 h-10 btn-ui flex justify-center items-center text-textMain hover:bg-textMain hover:text-surface"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+        </div>
+        <div class="p-6 overflow-y-auto bg-surface flex-grow flex flex-col gap-6">
+            <div class="card-ui p-4 bg-background">
+                <h3 class="text-sm font-bold text-textMain uppercase mb-4 tracking-wider">Tần suất sự cố (7 ngày qua)</h3>
+                <div class="w-full h-64">
+                    <canvas id="stats-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Drawer -->
+    <div id="settings-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden backdrop-blur-sm transition-opacity"></div>
+    <div id="settings-drawer" class="fixed top-0 right-0 w-full max-w-md h-full bg-surface border-l-4 border-textMain shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.2)] z-[101] transform translate-x-full flex flex-col transition-transform duration-300">
+        <div class="p-6 border-b-4 border-textMain flex justify-between items-center bg-background">
+            <h2 class="text-xl font-black text-textMain uppercase tracking-widest"><i class="fa-solid fa-sliders mr-3"></i>Cài đặt lõi</h2>
+            <button id="close-settings" class="w-10 h-10 btn-ui flex justify-center items-center text-textMain hover:bg-textMain hover:text-surface"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        
+        <div class="p-6 flex flex-col gap-6 overflow-y-auto flex-grow">
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Thời gian báo động (Bất động)</label>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="set-immobility" min="3" max="180" step="1" class="w-full h-2 bg-border appearance-none border-2 border-textMain">
+                    <span id="val-immobility" class="text-lg font-black text-textMain w-16 text-right">10s</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Nguồn phát Video (Camera)</label>
+                <input type="text" id="set-camera-src" class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest">Kênh báo động từ xa (Ntfy)</label>
+                <input type="text" id="set-ntfy" class="w-full p-3 bg-background border-2 border-textMain font-mono text-sm text-textMain outline-none focus:ring-2 ring-primary">
+            </div>
+
+
+            <div class="flex items-center justify-between border-t-4 border-border pt-6">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-ghost"></i> Chế độ riêng tư
+                </label>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="set-privacy" class="sr-only peer">
+                    <div class="w-14 h-7 bg-border border-2 border-textMain peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-textMain after:border-2 after:border-textMain after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-7"></div>
+                </label>
+            </div>
+
+            <div class="border-t-4 border-border pt-6 flex flex-col gap-2">
+                <label class="text-xs font-bold text-textMain uppercase tracking-widest mb-2">Tính năng thông minh</label>
+                <button id="btn-draw-zone" class="btn-ui p-3 w-full bg-[#f59e0b] text-[#1c1917] hover:bg-[#d97706]">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Vẽ Vùng an toàn (Giường/Sofa)
+                </button>
+                <button id="btn-clear-zone" class="btn-ui p-3 w-full text-red-600 border-red-600 hover:bg-red-50">
+                    <i class="fa-solid fa-trash mr-2"></i> Xóa Vùng an toàn
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 border-t-4 border-textMain bg-background">
+            <button id="btn-save-settings" class="btn-ui w-full py-4 bg-textMain text-surface hover:bg-primary font-black tracking-widest text-lg">LƯU CÀI ĐẶT</button>
+        </div>
+    </div>
+
+    <!-- Hidden Video Element for PiP -->
+    <video id="hidden-pip-video" muted autoplay playsinline style="position:fixed; top:-9999px; width:10px; height:10px;"></video>
+
+    <script>
+        // 1. Splash Screen
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if(splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 800);
+            }
+        }, 2000);
+
+        // 2. Web Audio Context (Siren)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let sirenInterval;
+        let isSirenPlaying = false;
+        
+        function playSirenTone(freq, type, duration) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime); 
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+        
+        function toggleWebSiren(play) {
+            if (play && !isSirenPlaying) {
+                isSirenPlaying = true;
+                let high = true;
+                sirenInterval = setInterval(() => {
+                    playSirenTone(high ? 800 : 600, 'square', 0.4);
+                    high = !high;
+                }, 400);
+            } else if (!play && isSirenPlaying) {
+                isSirenPlaying = false;
+                clearInterval(sirenInterval);
+            }
+        }
+        
+        // Unlock audio context on interaction
+        document.body.addEventListener('click', () => {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }, {once: true});
+
+        // 3. Picture-in-Picture (PiP) Logic using Canvas captureStream
+        const btnPip = document.getElementById('btn-pip');
+        const hiddenVideo = document.getElementById('hidden-pip-video');
+        const videoEl = document.getElementById('video-stream');
+        let pipCanvas = document.createElement('canvas');
+        let pipCtx = pipCanvas.getContext('2d');
+        let pipStream = null;
+        let pipFrameReq = null;
+
+        btnPip.onclick = async () => {
+            if (window.documentPictureInPicture) {
+                try {
+                    const pipWindow = await window.documentPictureInPicture.requestWindow({
+                        width: 640,
+                        height: 480
+                    });
+                    
+                    const pipCanvasLocal = document.createElement('canvas');
+                    pipCanvasLocal.width = 640; pipCanvasLocal.height = 480;
+                    pipCanvasLocal.style.width = '100%';
+                    pipCanvasLocal.style.height = '100%';
+                    pipCanvasLocal.style.objectFit = 'cover';
+                    pipWindow.document.body.style.margin = '0';
+                    pipWindow.document.body.appendChild(pipCanvasLocal);
+                    const pipCtxLocal = pipCanvasLocal.getContext('2d');
+                    
+                    function pipLoopLocal() {
+                        pipCtxLocal.drawImage(videoEl, 0, 0, pipCanvasLocal.width, pipCanvasLocal.height);
+                        safeZones.forEach(z => {
+                            const w = pipCanvasLocal.width; const h = pipCanvasLocal.height;
+                            pipCtxLocal.fillStyle = "rgba(16, 185, 129, 0.2)";
+                            pipCtxLocal.strokeStyle = "#10b981";
+                            pipCtxLocal.lineWidth = 2;
+                            pipCtxLocal.strokeRect(z.x1*w, z.y1*h, (z.x2-z.x1)*w, (z.y2-z.y1)*h);
+                        });
+                        if (!pipWindow.closed) requestAnimationFrame(pipLoopLocal);
+                    }
+                    pipLoopLocal();
+                } catch (err) {
+                    alert("Lỗi PiP: " + err.message);
+                }
+            } else {
+                alert("Trình duyệt Edge của bạn không hỗ trợ tính năng Document PiP mới nhất (Yêu cầu bản cập nhật mới)!");
+            }
+        };
+
+        // 4. Dark Mode & Settings 
+        const themeBtn = document.getElementById('theme-toggle');
+        const htmlNode = document.documentElement;
+        themeBtn.addEventListener('click', () => {
+            htmlNode.classList.toggle('dark');
+            const isDark = htmlNode.classList.contains('dark');
+            themeBtn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i> Day Mode' : '<i class="fa-solid fa-moon"></i> Night Watch';
+        });
+
+        const settingsDrawer = document.getElementById('settings-drawer');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const openSettings = () => { settingsDrawer.style.transform = 'translateX(0)'; settingsOverlay.classList.remove('hidden'); };
+        const closeSettings = () => { settingsDrawer.style.transform = 'translateX(100%)'; settingsOverlay.classList.add('hidden'); };
+        document.getElementById('settings-toggle').onclick = openSettings;
+        document.getElementById('close-settings').onclick = closeSettings;
+        settingsOverlay.onclick = closeSettings;
+
+        const rangeImm = document.getElementById('set-immobility');
+        const valImm = document.getElementById('val-immobility');
+        rangeImm.oninput = (e) => { valImm.innerText = e.target.value + 's'; };
+
+        fetch('/api/settings').then(r=>r.json()).then(data => {
+            rangeImm.value = data.immobility_timeout;
+            valImm.innerText = data.immobility_timeout + 's';
+            document.getElementById('set-ntfy').value = data.ntfy_topic;
+            document.getElementById('set-camera-src').value = data.camera_source !== undefined ? data.camera_source : '';
+            document.getElementById('set-privacy').checked = data.privacy_mode === true;
+            document.getElementById('set-patient-name').value = data.patient_name || '';
+            document.getElementById('set-patient-age').value = data.patient_age || '';
+            document.getElementById('set-emergency-phone').value = data.emergency_phone || '';
+            document.getElementById('set-receiver-email').value = data.receiver_email || '';
+            document.getElementById('set-smtp-user').value = data.smtp_user || '';
+            document.getElementById('set-smtp-pass').value = data.smtp_pass || '';
+            document.getElementById('ntfy-qr').src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://ntfy.sh/" + data.ntfy_topic;
+            if(data.safe_zones) { safeZones = data.safe_zones; setTimeout(drawAllZones, 1000); }
+        }).catch(()=>{});
+
+        document.getElementById('btn-save-settings').onclick = () => {
+            const payload = {
+                immobility_timeout: parseInt(rangeImm.value),
+                ntfy_topic: document.getElementById('set-ntfy').value,
+                camera_source: document.getElementById('set-camera-src').value,
+                privacy_mode: document.getElementById('set-privacy').checked,
+                patient_name: document.getElementById('set-patient-name').value,
+                patient_age: document.getElementById('set-patient-age').value,
+                emergency_phone: document.getElementById('set-emergency-phone').value,
+                receiver_email: document.getElementById('set-receiver-email').value,
+                smtp_user: document.getElementById('set-smtp-user').value,
+                smtp_pass: document.getElementById('set-smtp-pass').value,
+                safe_zones: safeZones
+            };
+            fetch('/api/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+            .then(() => {
+                document.getElementById('ntfy-qr').src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://ntfy.sh/" + payload.ntfy_topic;
+                closeSettings();
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        };
+
+        // 5. Safe Zones Canvas
+        const canvas = document.getElementById('canvas-overlay');
+        const ctx = canvas.getContext('2d');
+        let drawingMode = false; let isDrawing = false; let startX = 0, startY = 0; let safeZones = [];
+        
+        function resizeCanvas() { canvas.width = videoEl.clientWidth; canvas.height = videoEl.clientHeight; drawAllZones(); }
+        window.addEventListener('resize', resizeCanvas);
+        videoEl.onload = resizeCanvas;
+        setInterval(resizeCanvas, 2000);
+
+        document.getElementById('btn-draw-zone').onclick = () => {
+            closeSettings(); drawingMode = true; canvas.classList.add('drawing-mode');
+            document.getElementById('drawing-instruction').classList.remove('hidden');
+        };
+        document.getElementById('btn-clear-zone').onclick = () => { safeZones = []; drawAllZones(); };
+
+        canvas.onmousedown = (e) => {
+            if(!drawingMode) return;
+            isDrawing = true; const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+        };
+        canvas.onmousemove = (e) => {
+            if(!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+            drawAllZones();
+            ctx.fillStyle = "rgba(16, 185, 129, 0.4)"; ctx.strokeStyle = "#10b981"; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
+            ctx.fillRect(startX, startY, mouseX - startX, mouseY - startY);
+            ctx.strokeRect(startX, startY, mouseX - startX, mouseY - startY);
+            ctx.setLineDash([]);
+        };
+        canvas.onmouseup = (e) => {
+            if(!isDrawing) return;
+            isDrawing = false; const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left; const endY = e.clientY - rect.top;
+            const w = canvas.width; const h = canvas.height;
+            const x1 = Math.min(startX, endX) / w; const x2 = Math.max(startX, endX) / w;
+            const y1 = Math.min(startY, endY) / h; const y2 = Math.max(startY, endY) / h;
+            
+            if((x2 - x1) > 0.05 && (y2 - y1) > 0.05) safeZones.push({x1, y1, x2, y2});
+            drawingMode = false; canvas.classList.remove('drawing-mode');
+            document.getElementById('drawing-instruction').classList.add('hidden');
+            drawAllZones();
+            document.getElementById('btn-save-settings').click(); 
+        };
+
+        function drawAllZones() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width; const h = canvas.height;
+            safeZones.forEach(z => {
+                const zX = z.x1 * w; const zY = z.y1 * h; const zW = (z.x2 - z.x1) * w; const zH = (z.y2 - z.y1) * h;
+                ctx.fillStyle = "rgba(16, 185, 129, 0.2)"; ctx.strokeStyle = "#10b981"; ctx.setLineDash([5, 5]); ctx.lineWidth = 3;
+                ctx.fillRect(zX, zY, zW, zH); ctx.strokeRect(zX, zY, zW, zH); ctx.setLineDash([]);
+                ctx.fillStyle = "#10b981"; ctx.font = "bold 14px sans-serif"; ctx.fillText("SAFE ZONE", zX + 8, zY + 20);
+            });
+        }
+
+        
+        
+        // Blackbox Logic
+        const bbModal = document.getElementById('blackbox-modal');
+        const bbOverlay = document.getElementById('blackbox-overlay');
+        document.getElementById('blackbox-toggle').onclick = () => {
+            bbModal.classList.remove('hidden'); bbModal.classList.add('flex');
+            bbOverlay.classList.remove('hidden');
+            fetch('/api/records').then(r=>r.json()).then(data => {
+                const grid = document.getElementById('records-grid');
+                if(!data || data.length === 0) {
+                    grid.innerHTML = '<p class="text-textMuted font-bold uppercase col-span-2 text-center py-8">CHƯA CÓ BẢN GHI SỰ CỐ NÀO</p>';
+                    return;
+                }
+                let html = '';
+                data.forEach(url => {
+                    const filename = url.split('/').pop();
+                    const ts = filename.replace('incident_', '').replace('.mp4', '');
+                    const date = new Date(parseInt(ts)*1000).toLocaleString('vi-VN');
+                    html += `
+                    <div class="card-ui p-2 bg-background flex flex-col">
+                        <div class="bg-textMain text-surface px-2 py-1 text-xs font-bold uppercase tracking-wider mb-2 flex justify-between">
+                            <span>CRITICAL</span><span>${date}</span>
+                        </div>
+                        <video src="${url}" controls class="w-full aspect-video border-2 border-textMain bg-black"></video>
+                    </div>`;
+                });
+                grid.innerHTML = html;
+            });
+        };
+        const closeBB = () => { bbModal.classList.add('hidden'); bbModal.classList.remove('flex'); bbOverlay.classList.add('hidden'); };
+        document.getElementById('close-blackbox').onclick = closeBB;
+        bbOverlay.onclick = closeBB;
+
+        // Stats Logic
+        const statsModal = document.getElementById('stats-modal');
+        const statsOverlay = document.getElementById('stats-overlay');
+        let chartInstance = null;
+
+        document.getElementById('stats-toggle').onclick = () => {
+            statsModal.classList.remove('hidden');
+            statsModal.classList.add('flex');
+            statsOverlay.classList.remove('hidden');
+            
+            fetch('/api/stats').then(r=>r.json()).then(data => {
+                const labels = Object.keys(data);
+                const criticalData = labels.map(l => data[l].critical || 0);
+                const highData = labels.map(l => data[l].high || 0);
+                const medData = labels.map(l => data[l].medium || 0);
+                
+                const ctx = document.getElementById('stats-chart').getContext('2d');
+                if(chartInstance) chartInstance.destroy();
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'CRITICAL (Ngã/Đột quỵ)', data: criticalData, backgroundColor: '#dc2626', borderWidth: 2, borderColor: '#3e2a14' },
+                            { label: 'HIGH (Cần chú ý)', data: highData, backgroundColor: '#ea580c', borderWidth: 2, borderColor: '#3e2a14' },
+                            { label: 'MEDIUM (Bất thường nhẹ)', data: medData, backgroundColor: '#f59e0b', borderWidth: 2, borderColor: '#3e2a14' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } },
+                        plugins: { legend: { labels: { font: { family: 'Space Grotesk', weight: 'bold' } } } }
+                    }
+                });
+            });
+        };
+        const closeStats = () => { statsModal.classList.add('hidden'); statsModal.classList.remove('flex'); statsOverlay.classList.add('hidden'); };
+        document.getElementById('close-stats').onclick = closeStats;
+        statsOverlay.onclick = closeStats;
+
+        // 6. Dashboard Updates & Visual Alarms
+        const riskConfig = {
+            'normal': { class: 'bg-accent text-surface', text: 'SAFE', desc: 'Bình thường', color: 'bg-accent' },
+            'low': { class: 'bg-[#f59e0b] text-[#1c1917]', text: 'NOTICE', desc: 'Có dị thường nhẹ', color: 'bg-[#f59e0b]' },
+            'medium': { class: 'bg-[#f97316] text-[#fbf9f6]', text: 'WARNING', desc: 'Cần chú ý', color: 'bg-[#f97316]' },
+            'high': { class: 'bg-[#ef4444] text-[#fbf9f6]', text: 'DANGER', desc: 'Nguy cơ cao!', color: 'bg-[#ef4444]' },
+            'critical': { class: 'bg-[#dc2626] text-[#fbf9f6] animate-pulse', text: 'CRITICAL', desc: 'TÌNH TRẠNG KHẨN CẤP!', color: 'bg-[#dc2626]' }
+        };
+
+        let isCritical = false;
+        
+        document.getElementById('btn-resolve').onclick = () => {
+            document.getElementById('siren-overlay').classList.remove('active');
+            toggleWebSiren(false);
+            isCritical = false;
+            document.getElementById('btn-resolve').classList.add('hidden');
+        };
+
+        function updateDashboard() {
+            fetch('/api/status').then(r=>r.json()).then(data => {
+                if(data.error) return;
+                document.getElementById('camera-conn').innerText = data.camera_connected ? "ON" : "OFF";
+                document.getElementById('person-det').innerText = data.person_detected ? "Có người" : "Trống";
+                document.getElementById('fps-badge').innerText = `${data.fps.toFixed(0)} FPS`;
+                document.getElementById('uptime-val').innerText = new Date(data.uptime_seconds * 1000).toISOString().substr(11, 8);
+                document.getElementById('alerts-count').innerText = `${data.total_alerts_sent} CẢNH BÁO`;
+                
+                const rLevel = data.current_risk_level || 'normal';
+                const rc = riskConfig[rLevel];
+                document.getElementById('risk-badge').className = `px-8 py-4 text-3xl font-black border-4 border-textMain shadow-hard w-full uppercase tracking-widest ${rc.class} transition-colors duration-300`;
+                document.getElementById('risk-badge').innerText = rc.text;
+                document.getElementById('risk-description').innerText = rc.desc;
+                
+                if(rLevel === 'critical' && !isCritical) {
+                    isCritical = true;
+                    document.getElementById('siren-overlay').classList.add('active');
+                    document.getElementById('btn-resolve').classList.remove('hidden');
+                    toggleWebSiren(true);
+                } else if (rLevel !== 'critical' && isCritical) {
+                    document.getElementById('btn-resolve').click();
+                }
+            }).catch(()=>{});
+
+            fetch('/api/events').then(r=>r.json()).then(data => {
+                if(data.error) return;
+                const timeline = document.getElementById('events-timeline');
+                const history = data.history || [];
+                if(history.length === 0) return;
+                
+                let html = '';
+                history.sort((a,b)=>b.timestamp - a.timestamp);
+                history.forEach(ev => {
+                    const timeStr = new Date(ev.timestamp * 1000).toLocaleTimeString('en-US',{hour12:false});
+                    const colorClass = riskConfig[ev.severity].color;
+                    html += `
+                    <div class="relative pl-8 mb-6 group">
+                        <div class="absolute -left-[9px] top-1 w-5 h-5 ${colorClass} border-4 border-surface shadow-[0_0_0_2px_var(--text-main)] rounded-full z-10 group-hover:scale-125 transition-transform"></div>
+                        <span class="text-xs font-bold text-textMuted font-mono mb-1 inline-block bg-background px-2 py-0.5 border border-border">${timeStr}</span>
+                        <h4 class="text-sm font-black text-textMain uppercase flex items-center gap-2">
+                            ${ev.event_type.replace('_',' ')}
+                            <span class="text-[9px] bg-textMain text-surface px-1.5 py-0.5">${(ev.confidence*100).toFixed(0)}% ACC</span>
+                        </h4>
+                        <p class="text-xs font-bold mt-1 text-textMain opacity-90">${ev.description}</p>
+                    </div>`;
+                });
+                timeline.innerHTML = html;
+            }).catch(()=>{});
+        }
+        setInterval(updateDashboard, 1500);
+        updateDashboard();
+
+        // 7. Heartbeat: Tell backend we are alive
+        setInterval(() => {
+            fetch('/api/heartbeat', { method: 'POST' }).catch(()=>{});
+        }, 2000);
+    </script>
+</body>
+</html>

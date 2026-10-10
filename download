@@ -1,0 +1,7 @@
+﻿.venv/
+__pycache__/
+*.db
+*.mp4
+records/
+legacy_v1/
+assets/
